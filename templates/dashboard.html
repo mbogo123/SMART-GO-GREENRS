@@ -1,0 +1,150 @@
+{% extends "base.html" %}
+{% block title %}Dashboard – Contribution Tracker 2026{% endblock %}
+
+{% block content %}
+<div class="page-header">
+    <h1><i class="fas fa-tachometer-alt"></i> Group Dashboard</h1>
+    <p class="page-sub">2026 Contributions &bull; Due by 5th of each month &bull; Penalty KES {{ penalty }}</p>
+</div>
+
+<!-- Summary cards -->
+<div class="stats-grid">
+    <div class="stat-card green">
+        <div class="stat-icon"><i class="fas fa-users"></i></div>
+        <div class="stat-info">
+            <span class="stat-value">{{ members|length }}</span>
+            <span class="stat-label">Total Members</span>
+        </div>
+    </div>
+    <div class="stat-card teal">
+        <div class="stat-icon"><i class="fas fa-user-check"></i></div>
+        <div class="stat-info">
+            <span class="stat-value">{{ active_count }}</span>
+            <span class="stat-label">Active Members</span>
+        </div>
+    </div>
+    <div class="stat-card lime">
+        <div class="stat-icon"><i class="fas fa-user-minus"></i></div>
+        <div class="stat-info">
+            <span class="stat-value">{{ left_count }}</span>
+            <span class="stat-label">Left (7 Jul 2026)</span>
+        </div>
+    </div>
+    <div class="stat-card forest">
+        <div class="stat-icon"><i class="fas fa-coins"></i></div>
+        <div class="stat-info">
+            <span class="stat-value">KES {{ "{:,}".format(cumulative_total) }}</span>
+            <span class="stat-label">Grand Total</span>
+        </div>
+    </div>
+    <div class="stat-card orange">
+        <div class="stat-icon"><i class="fas fa-balance-scale"></i></div>
+        <div class="stat-info">
+            <span class="stat-value">KES {{ "{:,}".format(cumulative_balance) }}</span>
+            <span class="stat-label">Outstanding Balance</span>
+        </div>
+    </div>
+    <div class="stat-card emerald">
+        <div class="stat-icon"><i class="fas fa-hand-holding-usd"></i></div>
+        <div class="stat-info">
+            <span class="stat-value">KES {{ "{:,}".format(dividends) }}</span>
+            <span class="stat-label">Dividends</span>
+        </div>
+    </div>
+</div>
+
+<!-- Legend -->
+<div class="legend-box">
+    <h3><i class="fas fa-info-circle"></i> Legend</h3>
+    <div class="legend-items">
+        <span class="leg paid"><i class="fas fa-check-circle"></i> Paid on time (KES 2,000)</span>
+        <span class="leg late"><i class="fas fa-exclamation-circle"></i> Paid with penalty (KES 2,300)</span>
+        <span class="leg missed"><i class="fas fa-times-circle"></i> Missed / not paid (red)</span>
+        <span class="leg left"><i class="fas fa-door-open"></i> Left 7 Jul 2026 – no further penalty</span>
+        <span class="leg partial"><i class="fas fa-adjust"></i> Partial payment</span>
+    </div>
+</div>
+
+<!-- Download bar -->
+<div class="download-bar">
+    <a href="{{ url_for('download_group_statement') }}" class="btn btn-download">
+        <i class="fas fa-file-csv"></i> Download Group CSV
+    </a>
+    <a href="{{ url_for('download_group_txt') }}" class="btn btn-download-alt">
+        <i class="fas fa-file-alt"></i> Download Full Statement (TXT)
+    </a>
+</div>
+
+<!-- Members table -->
+<div class="table-wrapper">
+    <table class="members-table">
+        <thead>
+            <tr>
+                <th>No</th>
+                <th>Member</th>
+                <th>Prev Total</th>
+                {% for m in months %}
+                <th class="month-col">{{ m }}</th>
+                {% endfor %}
+                <th>Total</th>
+                <th>Balance</th>
+                <th>Action</th>
+            </tr>
+        </thead>
+        <tbody>
+            {% for member in members %}
+            <tr class="{% if member.left %}row-left{% endif %}">
+                <td>{{ member.no }}</td>
+                <td class="name-cell {% if member.left %}name-left{% endif %}">
+                    {{ member.name }}
+                    {% if member.left %}<span class="badge-left">LEFT</span>{% endif %}
+                </td>
+                <td class="num">{{ "{:,}".format(member.prev_total) }}</td>
+                {% for month in months %}
+                    {% set status, val = payment_status(member, month) %}
+                    <td class="pay-cell status-{{ status }}">
+                        {% if status == 'left' %}
+                            —
+                        {% elif val is not none %}
+                            {{ "{:,}".format(val) }}
+                        {% else %}
+                            —
+                        {% endif %}
+                    </td>
+                {% endfor %}
+                <td class="num total-col">{{ "{:,}".format(member.total) }}</td>
+                <td class="num balance-col {% if member.balance == 0 %}bal-zero{% elif member.balance > 30000 %}bal-high{% endif %}">
+                    {{ "{:,}".format(member.balance) }}
+                </td>
+                <td>
+                    <a href="{{ url_for('member_detail', no=member.no) }}" class="btn-sm btn-view">
+                        <i class="fas fa-eye"></i> Statement
+                    </a>
+                </td>
+            </tr>
+            {% endfor %}
+        </tbody>
+        <tfoot>
+            <tr class="totals-row">
+                <td colspan="2"><strong>CUMULATIVE / DIVIDENDS</strong></td>
+                <td class="num"><strong>{{ "{:,}".format(cumulative_prev) }}</strong></td>
+                <td colspan="12"></td>
+                <td class="num"><strong>{{ "{:,}".format(cumulative_total) }}</strong></td>
+                <td class="num"><strong>{{ "{:,}".format(cumulative_balance) }}</strong></td>
+                <td></td>
+            </tr>
+        </tfoot>
+    </table>
+</div>
+
+<div class="notes-box">
+    <h3><i class="fas fa-sticky-note"></i> Notes</h3>
+    <ul>
+        <li>Monthly contribution is <strong>KES 2,000</strong>, payable by the <strong>5th</strong> of every month.</li>
+        <li>Failure to pay by the 5th attracts a <strong>KES 300</strong> penalty (shown as 2,300).</li>
+        <li>Members highlighted in green left the group on <strong>7 July 2026</strong> and are not subject to any further penalties.</li>
+        <li>Click <strong>Statement</strong> next to any member to view and download their individual statement.</li>
+        <li>Use the buttons above to download the entire group statement (CSV or full text).</li>
+    </ul>
+</div>
+{% endblock %}

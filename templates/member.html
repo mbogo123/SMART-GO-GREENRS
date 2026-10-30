@@ -1,0 +1,78 @@
+{% extends "base.html" %}
+{% block title %}{{ member.name }} – Statement{% endblock %}
+
+{% block content %}
+<div class="page-header">
+    <a href="{{ url_for('dashboard') }}" class="back-link"><i class="fas fa-arrow-left"></i> Back to Dashboard</a>
+    <h1>
+        {% if member.left %}<span class="badge-left">LEFT</span>{% endif %}
+        {{ member.name }}
+    </h1>
+    <p class="page-sub">Member No. {{ member.no }} &bull; Individual Contribution Statement</p>
+</div>
+
+<div class="member-summary-cards">
+    <div class="mscard">
+        <span class="ms-label">Previous Total (23/24/25)</span>
+        <span class="ms-value">KES {{ "{:,}".format(member.prev_total) }}</span>
+    </div>
+    <div class="mscard">
+        <span class="ms-label">2026 + Prev Grand Total</span>
+        <span class="ms-value">KES {{ "{:,}".format(member.total) }}</span>
+    </div>
+    <div class="mscard {% if member.balance == 0 %}ms-zero{% else %}ms-balance{% endif %}">
+        <span class="ms-label">Balance to Pay</span>
+        <span class="ms-value">KES {{ "{:,}".format(member.balance) }}</span>
+    </div>
+    {% if member.left %}
+    <div class="mscard ms-left">
+        <span class="ms-label">Status</span>
+        <span class="ms-value">Left 7 July 2026</span>
+    </div>
+    {% endif %}
+</div>
+
+<div class="statement-section">
+    <div class="section-header">
+        <h2><i class="fas fa-file-invoice"></i> Payment History 2026</h2>
+        <a href="{{ url_for('download_member_statement', no=member.no) }}" class="btn btn-download">
+            <i class="fas fa-download"></i> Download Statement
+        </a>
+    </div>
+
+    <div class="payment-grid">
+        {% for month in months %}
+            {% set status, val = payment_status(member, month) %}
+            <div class="pay-card status-{{ status }}">
+                <div class="pay-month">{{ month }}</div>
+                <div class="pay-amount">
+                    {% if status == 'left' %}
+                        —
+                    {% elif val is not none %}
+                        KES {{ "{:,}".format(val) }}
+                    {% else %}
+                        —
+                    {% endif %}
+                </div>
+                <div class="pay-status-label">
+                    {% if status == 'paid' %}On time
+                    {% elif status == 'late' %}With penalty
+                    {% elif status == 'partial' %}Partial
+                    {% elif status == 'missed' %}Missed
+                    {% elif status == 'left' %}Left
+                    {% endif %}
+                </div>
+            </div>
+        {% endfor %}
+    </div>
+</div>
+
+<div class="statement-text-box">
+    <h2><i class="fas fa-scroll"></i> Full Statement</h2>
+    <pre class="statement-pre">{% for line in statement %}{{ line }}
+{% endfor %}</pre>
+    <a href="{{ url_for('download_member_statement', no=member.no) }}" class="btn btn-download">
+        <i class="fas fa-download"></i> Download as TXT
+    </a>
+</div>
+{% endblock %}
